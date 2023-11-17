@@ -1,6 +1,6 @@
 from aiohttp import web, ClientSession
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 import re
 
 URL = 'https://news.ycombinator.com/'
@@ -10,7 +10,7 @@ WORD_LENGHT = 6
 
 
 async def handle(request):
-    url = URL + request.path_qs if request.path_qs else url
+    url = urljoin(URL, request.path_qs)
     async with ClientSession() as session:
         async with session.get(url) as response:
             content_type = response.headers.get('Content-Type', '')
@@ -31,11 +31,13 @@ def scan_text(text):
     text_nodes = soup.find_all(string=True)
 
     for text_node in text_nodes:
-        words = text_node.split()
-        for i, word in enumerate(words):
-            if len(word) == WORD_LENGHT and not re.findall(PATTERN, word):
-                words[i] = f"{word}™"
-        text_node.replace_with(' '.join(words))
+        parts = re.split(r'(\s+)', text_node)
+
+        for i, part in enumerate(parts):
+            if len(part) == WORD_LENGHT and not re.findall(PATTERN, part):
+                parts[i] = f"{part}™"
+
+        text_node.replace_with(''.join(parts))
     return soup
 
 
